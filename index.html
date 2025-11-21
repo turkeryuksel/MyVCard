@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>VCard System</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+
+    <style>
+        :root { --bg: #080808; --card: #141414; --gold: #d4af37; --text: #fff; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Montserrat', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; font-size: 16px; display: flex; justify-content: center; }
+        .hidden { display: none !important; }
+
+        /* LOGIN */
+        #auth-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:2000; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px; }
+        .auth-box { width:100%; max-width:350px; background:#1a1a1a; padding:30px; border-radius:20px; border:1px solid #333; text-align:center; }
+        .auth-inp { width:100%; padding:14px; margin-bottom:15px; background:#000; border:1px solid #444; color:#fff; border-radius:8px; font-size: 1rem; }
+        .auth-btn { width:100%; padding:14px; background:var(--gold); color:#000; font-weight:bold; border:none; border-radius:8px; cursor:pointer; margin-bottom:10px; font-size: 1rem; }
+        .forgot-link { color: #888; font-size: 0.8rem; text-decoration: underline; cursor: pointer; margin-top: 10px; display: inline-block; }
+        #auth-msg { color: #ff4444; margin-top: 10px; font-size: 0.85rem; font-weight: bold; }
+
+        /* KART */
+        .card-wrapper { width: 100%; max-width: 420px; min-height: 100vh; background: var(--card); padding: 20px; display: flex; flex-direction: column; align-items: center; position: relative; padding-bottom: 120px; }
+
+        /* ADMIN BUTONLARI */
+        .super-admin-badge { position: fixed; top: 20px; left: 20px; z-index: 2000; background: #ff4444; color: white; padding: 8px 15px; border-radius: 30px; font-weight: bold; font-size: 0.8rem; cursor: pointer; display: none; }
+        .fab-edit { position: fixed; bottom: 30px; right: 30px; z-index: 999; width: 65px; height: 65px; border-radius: 50%; background: var(--gold); color: #000; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; box-shadow: 0 0 25px rgba(212,175,55,0.6); cursor: pointer; animation: pulse 2s infinite; display: none; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(212, 175, 55, 0); } 100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); } }
+
+        /* LINK KUTUSU */
+        #share-box { width:100%; background: rgba(212, 175, 55, 0.1); border: 1px solid var(--gold); border-radius: 10px; padding: 15px; margin-bottom: 25px; text-align: center; display: none; margin-top: 10px; }
+        .share-link { font-size: 0.8rem; color: var(--gold); font-weight: bold; word-break: break-all; cursor: pointer; text-decoration: underline;}
+
+        /* UI */
+        .lang-bar { display: flex; gap: 8px; background: #222; padding: 5px; border-radius: 25px; margin-bottom: 30px; border: 1px solid #333; }
+        .l-btn { background: none; border: none; color: #777; padding: 8px 18px; border-radius: 20px; font-weight: 700; cursor: pointer; font-size: 0.8rem; transition: 0.3s; }
+        .l-btn.active { background: var(--gold); color: #000; }
+
+        .pic-frame { width: 150px; height: 150px; border-radius: 50%; border: 3px solid var(--gold); overflow: hidden; margin-bottom: 25px; background: #222; position: relative; }
+        .pic-frame img { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .pic-ph { position: absolute; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#444; font-size:3rem; }
+
+        .info { text-align: center; width: 100%; margin-bottom: 30px; }
+        .name { font-size: 1.8rem; font-weight: 900; text-transform: uppercase; margin-bottom: 8px; color: var(--gold); line-height: 1.1; min-height: 30px;}
+        .title { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; color: #eee; margin-bottom: 5px; min-height: 20px;}
+        .comp { font-size: 0.8rem; color: #888; min-height: 20px; }
+        
+        /* BOŞ DURUM GÖRÜNÜMÜ (ITALIK VE GRI) */
+        .empty-state { color: #444 !important; font-style: italic !important; font-weight: normal !important; text-transform: none !important; }
+
+        .list { width: 100%; list-style: none; margin-bottom: 25px; }
+        .item { display: flex; align-items: center; padding: 16px; margin-bottom: 12px; background: rgba(255,255,255,0.04); border-radius: 12px; border: 1px solid #333; }
+        .icon { color: var(--gold); width: 35px; text-align: center; font-size: 1.1rem; margin-right: 15px; }
+        .val { font-size: 0.95rem; color: #fff; word-break: break-word; font-weight: 500; }
+
+        .qr-box { width: 100%; background: #fff; padding: 20px; border-radius: 15px; border: 4px solid var(--gold); display: flex; flex-direction: column; align-items: center; margin-top: auto; cursor: pointer; margin-bottom: 20px;}
+        .qr-txt { color: #000; font-weight: 800; font-size: 0.85rem; margin-bottom: 10px; text-align: center; text-transform: uppercase; }
+        #qrcode canvas { display: block; margin: 0 auto; max-width: 100%; }
+
+        .download-btn { width: 100%; padding: 18px; background: var(--gold); color: #000; border: none; border-radius: 12px; font-weight: 900; font-size: 1rem; cursor: pointer; margin-bottom: 30px; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 5px 20px rgba(212,175,55,0.3); }
+        .install-help-btn { background: transparent; border: none; color: #555; font-size: 0.8rem; text-decoration: underline; cursor: pointer; padding: 10px; display: flex; align-items: center; gap: 8px;}
+
+        /* MODAL */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 3000; overflow-y: auto; padding:20px; }
+        .m-box { background: #1a1a1a; margin: 0 auto; min-height: 100vh; padding: 25px; max-width: 600px; }
+        .m-head { display: flex; justify-content: space-between; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid #333; align-items: center; position: sticky; top: 0; background: #1a1a1a; z-index: 10; padding-top: 10px;}
+        .close { color: #fff; font-size: 2rem; cursor: pointer; }
+        .inp-grp { margin-bottom: 25px; background: #111; padding: 20px; border-radius: 12px; border: 1px solid #333; }
+        .grp-title { color: var(--gold); font-size: 1rem; font-weight: 800; margin-bottom: 20px; display: block; border-bottom: 1px solid #333; padding-bottom: 10px; text-transform: uppercase; }
+        .sub-label { color: #ccc; font-size: 0.8rem; display: block; margin-bottom: 8px; margin-top: 15px; font-weight: 700; }
+        .inp { width: 100%; padding: 12px; background: #000; border: 1px solid #444; color: #fff; border-radius: 8px; font-size: 1rem; }
+        .btn { width: 100%; padding: 16px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; margin-top: 10px; font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; }
+        .btn-gold { background: var(--gold); color: #000; position: sticky; bottom: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .btn-trans { width: 100%; padding: 12px; background: #333; color: #fff; border: 1px solid #555; border-radius: 8px; font-weight: 600; cursor: pointer; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; gap: 10px;}
+
+        /* SUPER ADMIN PANEL */
+        .admin-modal-box { background: #1a1a1a; max-width: 800px; width: 95%; max-height: 80vh; overflow-y: auto; border: 1px solid #ff4444; padding: 20px; border-radius: 15px; margin: 50px auto; position: relative; }
+        .admin-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.8rem; }
+        .admin-table th { text-align: left; color: var(--gold); border-bottom: 1px solid #333; padding: 10px; }
+        .admin-table td { border-bottom: 1px solid #222; padding: 10px; color: #ccc; word-break: break-all; }
+
+        /* Guide Modal */
+        .guide-modal { display: none; position: fixed; bottom: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 300; align-items: flex-end; }
+        .guide-box { background: #1a1a1a; width: 100%; border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 30px; padding-bottom: 60px; text-align: center; border-top: 2px solid var(--gold); }
+        .g-alert { background: rgba(212, 175, 55, 0.1); border: 1px solid var(--gold); border-radius: 8px; padding: 15px; margin-bottom: 20px; font-size: 0.85rem; color: #eee; text-align: left; display: flex; gap: 10px; align-items: center;}
+        .copy-link-btn { width: 100%; padding: 12px; background: #333; color: white; border: 1px solid #555; border-radius: 8px; margin-bottom: 10px; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;}
+    </style>
+</head>
+<body>
+
+    <div id="super-admin-btn" class="super-admin-badge" onclick="toggleAdminPanel()">YÖNETİM</div>
+
+    <div id="admin-panel-modal" class="modal" style="z-index: 4000;">
+        <div class="admin-modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #333; padding-bottom:15px; margin-bottom:15px;">
+                <h2 style="color:#ff4444;">Yönetim Paneli</h2>
+                <span style="color:#fff; cursor:pointer; font-size:1.5rem;" onclick="toggleAdminPanel()">&times;</span>
+            </div>
+            <table class="admin-table">
+                <thead><tr><th>Kullanıcı</th><th>Link</th><th>Hak</th></tr></thead>
+                <tbody id="admin-list-body"><tr><td colspan="3">Yükleniyor...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="auth-screen">
+        <div class="auth-box">
+            <h2 style="color:white; margin-bottom:20px;">Giriş Yap</h2>
+            <input type="email" id="txtEmail" class="auth-inp" placeholder="E-posta">
+            <input type="password" id="txtPass" class="auth-inp" placeholder="Şifre">
+            <button class="auth-btn" id="btnLogin">Giriş Yap</button>
+            <button class="auth-btn" style="background:#333; color:#fff;" id="btnSignup">Kayıt Ol</button>
+            <span class="forgot-link" id="btnForgot">Şifremi Unuttum</span>
+            <p id="auth-msg"></p>
+        </div>
+    </div>
+
+    <div id="main-app" class="hidden">
+        
+        <div id="fab-edit" class="fab-edit"><i class="fa-solid fa-pen"></i></div>
+
+        <div class="card-wrapper">
+            <div id="share-box">
+                <div class="share-lbl">KARTVİZİT LİNKİNİZ</div>
+                <div class="share-link" id="share-link">...</div>
+                <div style="margin-top:10px; font-size:0.7rem; color:#666; cursor:pointer;" id="btnLogout">Çıkış Yap</div>
+            </div>
+
+            <div class="lang-bar">
+                <button class="l-btn active" id="btnTr">TR</button>
+                <button class="l-btn" id="btnEn">EN</button>
+                <button class="l-btn" id="btnRu">RU</button>
+            </div>
+
+            <div class="pic-frame">
+                <div class="pic-ph" id="pHolder"><i class="fa-solid fa-user"></i></div>
+                <img id="vPic">
+            </div>
+
+            <div class="info">
+                <div class="name" id="vName"></div>
+                <div class="title" id="vTitle"></div>
+                <div class="comp" id="vComp"></div>
+            </div>
+
+            <ul class="list">
+                <li class="item"><div class="icon"><i class="fa-solid fa-phone"></i></div><div class="val" id="vPh"></div></li>
+                <li class="item"><div class="icon"><i class="fa-solid fa-envelope"></i></div><div class="val" id="vEm"></div></li>
+                <li class="item"><div class="icon"><i class="fa-solid fa-globe"></i></div><div class="val" id="vWeb"></div></li>
+                <li class="item"><div class="icon"><i class="fa-solid fa-location-dot"></i></div><div class="val" id="vAd"></div></li>
+            </ul>
+
+            <div class="qr-box">
+                <div class="qr-txt">KAYDETMEK İÇİN OKUTUN</div>
+                <canvas id="qrcode"></canvas>
+            </div>
+
+            <button class="download-btn" id="btnDl">
+                <i class="fa-solid fa-user-plus"></i> <span id="txtSaveBtn">REHBERE KAYDET (.VCF)</span>
+            </button>
+
+            <button class="install-help-btn" id="btnInstallHelp">
+                <i class="fa-solid fa-mobile-screen"></i> <span id="txtInstall">Uygulamaya Dönüştür</span>
+            </button>
+        </div>
+    </div>
+
+    <div id="editor-modal" class="modal">
+        <div class="m-box">
+            <div class="m-head">
+                <h2 style="color:white">Düzenle</h2>
+                <span class="close" id="btnCloseEditor">&times;</span>
+            </div>
+            
+            <div class="inp-grp" style="border-color: var(--gold);">
+                <span class="grp-title">🔗 Özel Link Adı (Slug)</span>
+                <span class="sub-label">Örn: 'ahmet' yazarsanız linkiniz site.com/?u=ahmet olur.</span>
+                <input type="text" id="iSlug" class="inp" placeholder="kullaniciadi">
+                <span class="hint" id="slug-info" style="color:#888; font-size:0.7rem;">Değiştirme Hakkı: 3</span>
+            </div>
+
+            <div class="inp-grp">
+                <span class="grp-title">1. Fotoğraf</span>
+                <input type="file" id="iPic" accept="image/*" class="inp">
+            </div>
+
+            <div class="inp-grp">
+                <span class="grp-title">2. Genel Bilgiler</span>
+                <span class="sub-label">Ad Soyad (TR/EN)</span>
+                <input type="text" id="iName" class="inp" placeholder="Ad Soyad">
+                <span class="sub-label">Ad Soyad (Rusça - Opsiyonel)</span>
+                <input type="text" id="iNameRU" class="inp" placeholder="Rusça Adınız">
+                <span class="sub-label">Telefon</span>
+                <input type="text" id="iPh" class="inp" placeholder="+90...">
+                <span class="sub-label">Email</span>
+                <input type="text" id="iEm" class="inp" placeholder="mail@...">
+                <span class="sub-label">Web</span>
+                <input type="text" id="iWeb" class="inp" placeholder="www...">
+            </div>
+
+            <button class="btn-trans" id="btnTrans">✨ Otomatik Çevir</button>
+
+            <div class="inp-grp">
+                <span class="grp-title">3. 🇹🇷 Türkçe</span>
+                <span class="sub-label">Ünvan</span> <input type="text" id="tTR" class="inp">
+                <span class="sub-label">Şirket</span> <input type="text" id="cTR" class="inp">
+                <span class="sub-label">Adres</span> <input type="text" id="aTR" class="inp">
+            </div>
+
+            <div class="inp-grp">
+                <span class="grp-title">4. 🇬🇧 İngilizce</span>
+                <span class="sub-label">Title</span> <input type="text" id="tEN" class="inp">
+                <span class="sub-label">Company</span> <input type="text" id="cEN" class="inp">
+                <span class="sub-label">Address</span> <input type="text" id="aEN" class="inp">
+            </div>
+
+            <div class="inp-grp">
+                <span class="grp-title">5. 🇷🇺 Rusça</span>
+                <span class="sub-label">Должность</span> <input type="text" id="tRU" class="inp">
+                <span class="sub-label">Компания</span> <input type="text" id="cRU" class="inp">
+                <span class="sub-label">Адрес</span> <input type="text" id="aRU" class="inp">
+            </div>
+
+            <button class="btn btn-gold" id="btnSave">KAYDET</button>
+            <div style="height:50px;"></div>
+        </div>
+    </div>
+
+    <div id="guideModal" class="guide-modal">
+        <div class="guide-box">
+            <div class="g-alert"><i class="fa-regular fa-compass"></i><span id="gAlert">...</span></div>
+            <button class="copy-link-btn" id="btnCopyLink"><i class="fa-solid fa-link"></i> <span id="btnCopy">...</span></button>
+            <button class="btn btn-gold" style="margin-top:20px;" id="gClose">...</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const ADMIN_EMAIL = "turker@taximact.com";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBd22lGJPA0Hz-GT2ft_QJ8L8gVM26msXs",
+            authDomain: "vcard-tr.firebaseapp.com",
+            projectId: "vcard-tr",
+            storageBucket: "vcard-tr.firebasestorage.app",
+            messagingSenderId: "568030042652",
+            appId: "1:568030042652:web:6b1a2acadc92383769ddd9"
+        };
+
+        let app, auth, db;
+        try { app = initializeApp(firebaseConfig); auth = getAuth(app); db = getFirestore(app); } 
+        catch(e) { console.error("Config Error:", e); }
+
+        let currentUser = null;
+        let data = {};
+        let curLang = 'tr';
+        let isSuperAdmin = false;
+
+        const placeholders = {
+            tr: { name: "AD SOYAD GİRİNİZ", title: "Ünvan Ekleyin", comp: "Şirket Ekleyin", ph: "Telefon Ekleyin", em: "E-posta Ekleyin", web: "Web Sitesi Ekleyin", ad: "Adres Ekleyin" },
+            en: { name: "ENTER NAME", title: "Add Job Title", comp: "Add Company", ph: "Add Phone", em: "Add Email", web: "Add Website", ad: "Add Address" },
+            ru: { name: "ВВЕДИТЕ ИМЯ", title: "Добавить должность", comp: "Добавить компанию", ph: "Добавить телефон", em: "Добавить email", web: "Добавить сайт", ad: "Добавить адрес" }
+        };
+
+        const txt = {
+            tr: { btnDl: "REHBERE KAYDET (.VCF)", app: "Uygulamaya Dönüştür", gAlert: "Safari'de açmalısınız.", btnCopy:"Link Kopyala", gClose:"Anladım" },
+            en: { btnDl: "SAVE TO CONTACTS (.VCF)", app: "Install as App", gAlert: "Open in Safari.", btnCopy:"Copy Link", gClose:"Got it" },
+            ru: { btnDl: "СОХРАНИТЬ КОНТАКТ (.VCF)", app: "Установить", gAlert: "Откройте в Safari.", btnCopy:"Копировать", gClose:"Понятно" }
+        };
+
+        // EVENT LISTENERS (GÜVENLİ YÖNTEM)
+        document.getElementById('btnLogin').addEventListener('click', login);
+        document.getElementById('btnSignup').addEventListener('click', signup);
+        document.getElementById('btnForgot').addEventListener('click', forgotPass);
+        document.getElementById('btnLogout').addEventListener('click', logout);
+        document.getElementById('btnSave').addEventListener('click', saveData);
+        document.getElementById('fab-edit').addEventListener('click', openEditor);
+        document.getElementById('btnCloseEditor').addEventListener('click', closeEditor);
+        document.getElementById('btnTrans').addEventListener('click', autoTrans);
+        document.getElementById('btnDl').addEventListener('click', dl);
+        document.getElementById('share-link').addEventListener('click', copyLink);
+        document.getElementById('btnCopyLink').addEventListener('click', copyLink);
+        document.getElementById('btnInstallHelp').addEventListener('click', toggleGuide);
+        document.getElementById('gClose').addEventListener('click', toggleGuide);
+        
+        document.getElementById('btnTr').addEventListener('click', () => setL('tr'));
+        document.getElementById('btnEn').addEventListener('click', () => setL('en'));
+        document.getElementById('btnRu').addEventListener('click', () => setL('ru'));
+
+        window.toggleAdminPanel = async () => {
+            const p = document.getElementById('admin-panel-modal');
+            if(p.style.display==='block'){p.style.display='none'; return;}
+            p.style.display='block';
+            const tbody = document.getElementById('admin-list-body');
+            tbody.innerHTML = "<tr><td>Yükleniyor...</td></tr>";
+            const snap = await getDocs(collection(db, "cards"));
+            let html = "";
+            snap.forEach(doc => {
+                const u = doc.data();
+                const l = u.slug ? "?u="+u.slug : "-";
+                const c = u.slugCount || 0;
+                html += `<tr><td>${u.name||"Adsız"}</td><td>${l}</td><td>${c}/3</td></tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const uid = urlParams.get('uid');
+        const slug = urlParams.get('u');
+
+        if (slug) {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('main-app').classList.remove('hidden');
+            loadDataBySlug(slug);
+        } else if (uid) {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('main-app').classList.remove('hidden');
+            loadData(uid);
+        } else {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    if(user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+                        isSuperAdmin = true;
+                        document.getElementById('super-admin-btn').style.display = 'block';
+                    }
+                    document.getElementById('auth-screen').style.display = 'none';
+                    document.getElementById('main-app').classList.remove('hidden');
+                    document.getElementById('fab-edit').style.display = 'flex';
+                    document.getElementById('share-box').style.display = 'block';
+                    loadData(user.uid);
+                } else {
+                    document.getElementById('auth-screen').style.display = 'flex';
+                }
+            });
+        }
+
+        async function loadDataBySlug(slug) {
+            const q = query(collection(db, "cards"), where("slug", "==", slug));
+            const snap = await getDocs(q);
+            if (!snap.empty) { data = snap.docs[0].data(); render(); } 
+            else { alert("Kullanıcı bulunamadı."); }
+        }
+
+        async function loadData(uid) {
+            const docSnap = await getDoc(doc(db, "cards", uid));
+            if (docSnap.exists()) { 
+                data = docSnap.data();
+                updateShareLink();
+                render();
+            } else { render(); }
+        }
+
+        function updateShareLink() {
+            let link = window.location.origin + window.location.pathname;
+            link += data.slug ? "?u=" + data.slug : "?uid=" + currentUser.uid;
+            document.getElementById('share-link').innerText = link;
+        }
+
+        async function saveData() {
+            const btn = document.getElementById('btnSave'); btn.innerText = "KAYDEDİLİYOR...";
+            
+            const inputSlug = document.getElementById('iSlug').value.trim().toLowerCase();
+            const currentSlug = data.slug || "";
+            let slugUpdate = currentSlug;
+
+            if(inputSlug !== "" && inputSlug !== currentSlug) {
+                const q = query(collection(db, "cards"), where("slug", "==", inputSlug));
+                const snap = await getDocs(q);
+                if(!snap.empty) { alert("Bu link alınmış!"); btn.innerText = "KAYDET"; return; }
+                if(!isSuperAdmin) {
+                    const count = data.slugCount || 0;
+                    if(count >= 3) { alert("Hakkınız doldu."); btn.innerText = "KAYDET"; return; }
+                    data.slugCount = count + 1;
+                }
+                slugUpdate = inputSlug;
+            }
+
+            const newData = {
+                ...data,
+                slug: slugUpdate,
+                name: document.getElementById('iName').value,
+                nameRU: document.getElementById('iNameRU').value,
+                ph: document.getElementById('iPh').value,
+                em: document.getElementById('iEm').value,
+                web: document.getElementById('iWeb').value,
+                en: { t:document.getElementById('tEN').value, c:document.getElementById('cEN').value, a:document.getElementById('aEN').value },
+                tr: { t:document.getElementById('tTR').value, c:document.getElementById('cTR').value, a:document.getElementById('aTR').value },
+                ru: { t:document.getElementById('tRU').value, c:document.getElementById('cRU').value, a:document.getElementById('aRU').value },
+                pic: data.pic || ""
+            };
+
+            const file = document.getElementById('iPic').files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = async (e) => {
+                    newData.pic = await compress(e.target.result);
+                    await finishSave(newData);
+                }
+            } else { await finishSave(newData); }
+        }
+
+        async function finishSave(d) {
+            await setDoc(doc(db, "cards", currentUser.uid), d, {merge:true});
+            data = d;
+            updateShareLink();
+            render();
+            closeEditor();
+            document.getElementById('btnSave').innerText = "KAYDET";
+            alert("Kaydedildi!");
+        }
+
+        function render() {
+            const ph = placeholders[curLang];
+            const t = txt[curLang];
+            let n = data.name; if(curLang === 'ru' && data.nameRU) n = data.nameRU;
+
+            const fill = (id, val, def) => {
+                const el = document.getElementById(id);
+                if (val && val.trim() !== "") { 
+                    el.innerText = val; el.classList.remove('empty-state'); el.style.color = id === 'vName' ? 'var(--gold)' : '#fff'; 
+                } else { 
+                    el.innerText = def; el.classList.add('empty-state'); el.style.color = '#444'; 
+                }
+            };
+
+            fill('vName', n, ph.name);
+            fill('vTitle', data[curLang]?.t, ph.title);
+            fill('vComp', data[curLang]?.c, ph.comp);
+            fill('vPh', data.ph, ph.ph);
+            fill('vEm', data.em, ph.em);
+            fill('vWeb', data.web, ph.web);
+            fill('vAd', data[curLang]?.a, ph.ad);
+
+            if(data.pic) { document.getElementById('vPic').src = data.pic; document.getElementById('vPic').style.display='block'; document.getElementById('pHolder').style.display='none'; }
+            else { document.getElementById('vPic').style.display='none'; document.getElementById('pHolder').style.display='flex'; }
+
+            document.getElementById('txtSaveBtn').innerText = t.btnDl;
+            document.getElementById('txtInstall').innerText = t.app;
+            document.getElementById('gAlert').innerHTML = `<i class="fa-regular fa-compass"></i> ${t.gAlert}`;
+            document.getElementById('btnCopy').innerText = t.btnCopy;
+            document.getElementById('gClose').innerText = t.gClose;
+
+            genQR(n);
+        }
+
+        function genQR(n) {
+            const v = `BEGIN:VCARD
+VERSION:3.0
+FN;CHARSET=UTF-8:${n||"Kartvizit"}
+TEL:${data.ph||""}
+EMAIL:${data.em||""}
+URL:${data.web||""}
+END:VCARD`;
+            const ev = unescape(encodeURIComponent(v));
+            new QRious({ element: document.getElementById('qrcode'), value: ev, size: 200 });
+        }
+
+        function compress(src) {
+            return new Promise(resolve => {
+                const img = new Image(); img.src = src;
+                img.onload = () => {
+                    const c = document.createElement('canvas');
+                    const m = 300; const s = m/img.width;
+                    c.width = m; c.height = img.height*s;
+                    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+                    resolve(c.toDataURL('image/jpeg', 0.7));
+                }
+            });
+        }
+
+        function openEditor() {
+            document.getElementById('editor-modal').style.display = 'block';
+            document.getElementById('iSlug').value = data.slug || "";
+            document.getElementById('slug-info').innerText = isSuperAdmin ? "Yönetici (Sınırsız)" : `Kalan Hak: ${3-(data.slugCount||0)}`;
+            document.getElementById('iName').value = data.name || "";
+            document.getElementById('iNameRU').value = data.nameRU || "";
+            document.getElementById('iPh').value = data.ph || "";
+            document.getElementById('iEm').value = data.em || "";
+            document.getElementById('iWeb').value = data.web || "";
+            if(data.tr) { document.getElementById('tTR').value = data.tr.t || ""; document.getElementById('cTR').value = data.tr.c || ""; document.getElementById('aTR').value = data.tr.a || ""; }
+            if(data.en) { document.getElementById('tEN').value = data.en.t || ""; document.getElementById('cEN').value = data.en.c || ""; document.getElementById('aEN').value = data.en.a || ""; }
+            if(data.ru) { document.getElementById('tRU').value = data.ru.t || ""; document.getElementById('cRU').value = data.ru.c || ""; document.getElementById('aRU').value = data.ru.a || ""; }
+        }
+        function closeEditor() { document.getElementById('editor-modal').style.display = 'none'; }
+        function setL(l) { 
+            curLang = l; 
+            document.querySelectorAll('.l-btn').forEach(x=>x.classList.remove('active')); 
+            const btn = l==='tr'?document.querySelector('.l-btn:nth-child(1)'):l==='en'?document.querySelector('.l-btn:nth-child(2)'):document.querySelector('.l-btn:nth-child(3)');
+            btn.classList.add('active'); 
+            render(); 
+        }
+        function copyLink() { navigator.clipboard.writeText(document.getElementById('share-link').innerText).then(()=>alert("Link Kopyalandı!")); }
+        function toggleGuide() { const g = document.getElementById('guideModal'); g.style.display = g.style.display==='flex'?'none':'flex'; }
+        function dl() {
+            let n = data.name; if(curLang==='ru' && data.nameRU) n=data.nameRU;
+            const v = `BEGIN:VCARD
+VERSION:3.0
+FN;CHARSET=UTF-8:${n||"Kartvizit"}
+TEL:${data.ph||""}
+EMAIL:${data.em||""}
+URL:${data.web||""}
+END:VCARD`;
+            const b = new Blob([v],{type:'text/vcard;charset=utf-8'});
+            const a = document.createElement('a'); a.href=URL.createObjectURL(b); a.download="contact.vcf"; a.click();
+        }
+        async function signup() { const e = document.getElementById('txtEmail').value; const p = document.getElementById('txtPass').value; if(p.length<6) return alert("Şifre kısa!"); try { await createUserWithEmailAndPassword(auth, e, p); alert("Kayıt Başarılı!"); } catch(err) { document.getElementById('auth-msg').innerText = err.message; } }
+        async function login() { const e = document.getElementById('txtEmail').value; const p = document.getElementById('txtPass').value; try { await signInWithEmailAndPassword(auth, e, p); } catch(err) { document.getElementById('auth-msg').innerText = "Hatalı giriş: " + err.message; } }
+        async function forgotPass() { const e = document.getElementById('txtEmail').value; if(!e) return alert("Email yazın."); try { await sendPasswordResetEmail(auth, e); alert("Mail gönderildi."); } catch(er){ alert(er.message); } }
+        function logout() { signOut(auth); location.reload(); }
+        async function autoTrans() {
+            const t=document.getElementById('tTR').value, c=document.getElementById('cTR').value, a=document.getElementById('aTR').value;
+            if(!t && !c && !a) return;
+            const btn = document.getElementById('btnTrans'); btn.innerText = "...";
+            const f = async(x, pair)=>{ if(!x)return""; try{ const r=await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(x)}&langpair=${pair}`);const j=await r.json();return j.responseData.translatedText;}catch{return x;} };
+            document.getElementById('tEN').value=await f(t,'tr|en'); document.getElementById('cEN').value=await f(c,'tr|en'); document.getElementById('aEN').value=await f(a,'tr|en');
+            document.getElementById('tRU').value=await f(t,'tr|ru'); document.getElementById('cRU').value=await f(c,'tr|ru'); document.getElementById('aRU').value=await f(a,'tr|ru');
+            btn.innerHTML='✨ Otomatik Çevir';
+        }
+    </script>
+</body>
+</html>
